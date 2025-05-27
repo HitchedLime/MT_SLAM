@@ -28,6 +28,7 @@ import json
 import platform 
 
 from config import Config
+from local_features.feature_matcher import FeatureMatcher
 
 from slam import Slam, SlamState
 from slam_plot_drawer import SlamPlotDrawer
@@ -82,7 +83,7 @@ if __name__ == "__main__":
     parser.add_argument('--no_output_date', action='store_true', help='Do not append date to output directory')
     parser.add_argument('--headless', action='store_true', help='Run in headless mode')    
     args = parser.parse_args()
-    
+
     if args.config_path:
         config = Config(args.config_path) # use the custom configuration path file
     else:
@@ -103,15 +104,17 @@ if __name__ == "__main__":
         online_trajectory_writer = TrajectoryWriter(format_type=config.trajectory_saving_settings['format_type'], filename=trajectory_online_file_path)
         final_trajectory_writer = TrajectoryWriter(format_type=config.trajectory_saving_settings['format_type'], filename=trajectory_final_file_path)
     metrics_save_dir = trajectory_saving_base_path
-        
+
+
     groundtruth = groundtruth_factory(config.dataset_settings)
 
     camera = PinholeCamera(config)
 
     # Select your tracker configuration (see the file feature_tracker_configs.py) 
     # FeatureTrackerConfigs: SHI_TOMASI_ORB, FAST_ORB, ORB, ORB2, ORB2_FREAK, ORB2_BEBLID, BRISK, AKAZE, FAST_FREAK, SIFT, ROOT_SIFT, SURF, KEYNET, SUPERPOINT, CONTEXTDESC, LIGHTGLUE, XFEAT, XFEAT_XFEAT
-    # WARNING: At present, SLAM does not support LOFTR and other "pure" image matchers (further details in the commenting notes about LOFTR in feature_tracker_configs.py).
-    feature_tracker_config = FeatureTrackerConfigs.ORB2
+    # WARNING: At present, SLAM does not support LOFTR and other "pure" image s (further details in the commenting notes about LOFTR in feature_tracker_configs.py).
+    feature_tracker_config = FeatureTrackerConfigs.XFEAT
+
         
     # Select your loop closing configuration (see the file loop_detector_configs.py). Set it to None to disable loop closing. 
     # LoopDetectorConfigs: DBOW2, DBOW2_INDEPENDENT, DBOW3, DBOW3_INDEPENDENT, IBOW, OBINDEX2, VLAD, HDC_DELF, SAD, ALEXNET, NETVLAD, COSPLACE, EIGENPLACES  etc.
@@ -141,7 +144,7 @@ if __name__ == "__main__":
         depth_estimator = depth_estimator_factory(depth_estimator_type=depth_estimator_type, max_depth=max_depth,
                                                   dataset_env_type=dataset.environmentType(), camera=camera) 
         Printer.green(f'Depth_estimator_type: {depth_estimator_type.name}, max_depth: {max_depth}')       
-                
+## gere us the slam
     # create SLAM object
     slam = Slam(camera, feature_tracker_config, 
                 loop_detection_config, dataset.sensorType(), 
@@ -246,6 +249,7 @@ if __name__ == "__main__":
                         
                 if online_trajectory_writer is not None and slam.tracking.cur_R is not None and slam.tracking.cur_t is not None:
                     online_trajectory_writer.write_trajectory(slam.tracking.cur_R, slam.tracking.cur_t, timestamp)
+
                     
                 if time_start is not None: 
                     duration = time.time()-time_start
