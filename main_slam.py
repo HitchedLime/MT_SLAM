@@ -28,7 +28,8 @@ import json
 import platform 
 
 from config import Config
-from local_features.feature_matcher import FeatureMatcher
+from local_features.feature_matcher import FeatureMatcher ,FeatureMatcherTypes
+from main_feature_matching import tracker_type
 
 from slam import Slam, SlamState
 from slam_plot_drawer import SlamPlotDrawer
@@ -62,6 +63,52 @@ import traceback
 
 import argparse
 
+from test_config import feature_tracker_names_str
+
+feature_tracker_names = {
+
+    1: FeatureTrackerConfigs.LK_SHI_TOMASI,  # not in slam
+    2: FeatureTrackerConfigs.LK_FAST, # not in slam
+    3: FeatureTrackerConfigs.SHI_TOMASI_ORB, # very bad shoudl leave out
+    4: FeatureTrackerConfigs.SHI_TOMASI_FREAK, # very bad should be skipped
+    5: FeatureTrackerConfigs.FAST_ORB,
+    6: FeatureTrackerConfigs.FAST_FREAK,
+    7: FeatureTrackerConfigs.BRISK,
+    8: FeatureTrackerConfigs.BRISK_TFEAT,
+    9: FeatureTrackerConfigs.ORB,
+    10: FeatureTrackerConfigs.ORB2,
+    11: FeatureTrackerConfigs.KAZE,
+    12: FeatureTrackerConfigs.AKAZE,
+    13: FeatureTrackerConfigs.SIFT,
+    14: FeatureTrackerConfigs.ROOT_SIFT,
+    15: FeatureTrackerConfigs.SURF,
+    16: FeatureTrackerConfigs.SUPERPOINT,
+    17: FeatureTrackerConfigs.XFEAT,
+    18: FeatureTrackerConfigs.XFEAT_XFEAT,
+    19: FeatureTrackerConfigs.XFEAT_LIGHTGLUE,
+    20: FeatureTrackerConfigs.LIGHTGLUE,
+    21: FeatureTrackerConfigs.LIGHTGLUE_DISK,
+    22: FeatureTrackerConfigs.LIGHTGLUE_ALIKED,
+    23: FeatureTrackerConfigs.LIGHTGLUESIFT,
+    24: FeatureTrackerConfigs.DELF,
+    25: FeatureTrackerConfigs.D2NET,
+    26: FeatureTrackerConfigs.R2D2,
+    27: FeatureTrackerConfigs.LFNET,
+    28: FeatureTrackerConfigs.CONTEXTDESC,
+    29: FeatureTrackerConfigs.KEYNET,
+    30: FeatureTrackerConfigs.DISK,
+    31: FeatureTrackerConfigs.ALIKED,
+    32: FeatureTrackerConfigs.KEYNETAFFNETHARDNET,
+    33: FeatureTrackerConfigs.ORB2_FREAK,
+    34: FeatureTrackerConfigs.ORB2_BEBLID,
+    35: FeatureTrackerConfigs.ORB2_HARDNET,
+    36: FeatureTrackerConfigs.ORB2_SOSNET,
+    37: FeatureTrackerConfigs.ORB2_L2NET,
+    38: FeatureTrackerConfigs.LOFTR,
+    39: FeatureTrackerConfigs.MAST3R_MATCHER
+}
+
+# from test.cv.test_feature_manager2 import feature_tracker_config
 
 datetime_string = datetime.now().strftime("%Y%m%d_%H%M%S")
     
@@ -81,13 +128,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config_path', type=str, default=None, help='Optional path for custom configuration file')
     parser.add_argument('--no_output_date', action='store_true', help='Do not append date to output directory')
-    parser.add_argument('--headless', action='store_true', help='Run in headless mode')    
+    parser.add_argument('--headless', action='store_true', help='Run in headless mode')
+    parser.add_argument('--tracker_config', type=int, help='Specify the tracker configuration as a number')
+    # parser.add_argument('--save_path', type=str, help='trajectory_save_path')
     args = parser.parse_args()
 
     if args.config_path:
         config = Config(args.config_path) # use the custom configuration path file
     else:
         config = Config()
+
+
         
     if args.no_output_date:
         print('Not appending date to output directory')
@@ -100,7 +151,11 @@ if __name__ == "__main__":
     online_trajectory_writer = None
     final_trajectory_writer = None
     if config.trajectory_saving_settings['save_trajectory']:
-        trajectory_online_file_path, trajectory_final_file_path, trajectory_saving_base_path = config.get_trajectory_saving_paths(datetime_string)
+        # trajectory_online_file_path, trajectory_final_file_path, trajectory_saving_base_path = config.get_trajectory_saving_paths(datetime_string)
+        trajectory_online_file_path=f'results/{feature_tracker_names_str[args.tracker_config]}/trajectory_online.txt'
+
+        trajectory_final_file_path =f'results/{feature_tracker_names_str[args.tracker_config]}/trajectory_final.txt'
+        trajectory_saving_base_path=f'results/{feature_tracker_names_str[args.tracker_config]}'
         online_trajectory_writer = TrajectoryWriter(format_type=config.trajectory_saving_settings['format_type'], filename=trajectory_online_file_path)
         final_trajectory_writer = TrajectoryWriter(format_type=config.trajectory_saving_settings['format_type'], filename=trajectory_final_file_path)
     metrics_save_dir = trajectory_saving_base_path
@@ -112,27 +167,39 @@ if __name__ == "__main__":
 
     # Select your tracker configuration (see the file feature_tracker_configs.py) 
     # FeatureTrackerConfigs: SHI_TOMASI_ORB, FAST_ORB, ORB, ORB2, ORB2_FREAK, ORB2_BEBLID, BRISK, AKAZE, FAST_FREAK, SIFT, ROOT_SIFT, SURF, KEYNET, SUPERPOINT, CONTEXTDESC, LIGHTGLUE, XFEAT, XFEAT_XFEAT
-    # WARNING: At present, SLAM does not support LOFTR and other "pure" image s (further details in the commenting notes about LOFTR in feature_tracker_configs.py).
-    feature_tracker_config = FeatureTrackerConfigs.XFEAT
+    #WARNING: At present, SLAM does not support LOFTR and other "pure" image s (further details in the commenting notes about LOFTR in feature_tracker_configs.py).
 
-        
-    # Select your loop closing configuration (see the file loop_detector_configs.py). Set it to None to disable loop closing. 
+    # for tracker_key in feature_tracker_names:
+    #     feature_tracker_config = feature_tracker_names[tracker_key]
+    # for item in feature_tracker_names.items():
+    #     print(item)
+    print(args.tracker_config)
+    if(  args.tracker_config not in feature_tracker_names.keys()):
+        feature_tracker_config = feature_tracker_names[1]
+        print("Defaulting for ORB as feature tracker")
+    else:
+        feature_tracker_config = feature_tracker_names[ args.tracker_config]
+
+    # feature_tracker_config["tracker_type"]= FeatureMatcherTypes.BF
+
+
+    # Select your loop closing configuration (see the file loop_detector_configs.py). Set it to None to disable loop closing.
     # LoopDetectorConfigs: DBOW2, DBOW2_INDEPENDENT, DBOW3, DBOW3_INDEPENDENT, IBOW, OBINDEX2, VLAD, HDC_DELF, SAD, ALEXNET, NETVLAD, COSPLACE, EIGENPLACES  etc.
     # NOTE: under mac, the boost/text deserialization used by DBOW2 and DBOW3 may be very slow.
     loop_detection_config = LoopDetectorConfigs.DBOW3
 
     # Override the feature tracker and loop detector configuration from the `settings` file
-    if config.feature_tracker_config_name is not None:  # Check if we set `FeatureTrackerConfig.name` in the `settings` file 
+    if config.feature_tracker_config_name is not None:  # Check if we set `FeatureTrackerConfig.name` in the `settings` file
         feature_tracker_config = FeatureTrackerConfigs.get_config_from_name(config.feature_tracker_config_name) # Override the feature tracker configuration from the `settings` file
-    if config.num_features_to_extract > 0:             # Check if we set `FeatureTrackerConfig.nFeatures` in the `settings` file 
+    if config.num_features_to_extract > 0:             # Check if we set `FeatureTrackerConfig.nFeatures` in the `settings` file
         Printer.yellow('Setting feature_tracker_config num_features from settings: ',config.num_features_to_extract)
         feature_tracker_config['num_features'] = config.num_features_to_extract  # Override the number of features from the `settings` file
-    if config.loop_detection_config_name is not None:  # Check if we set `LoopDetectorConfig.name` in the `settings` file 
+    if config.loop_detection_config_name is not None:  # Check if we set `LoopDetectorConfig.name` in the `settings` file
         loop_detection_config = LoopDetectorConfigs.get_config_from_name(config.loop_detection_config_name) # Override the loop detector configuration from the `settings` file
-        
-    Printer.green('feature_tracker_config: ',json.dumps(feature_tracker_config, indent=4, cls=SerializableEnumEncoder))          
+    feature_tracker_config['num_features'] =250
+    Printer.green('feature_tracker_config: ',json.dumps(feature_tracker_config, indent=4, cls=SerializableEnumEncoder))
     Printer.green('loop_detection_config: ',json.dumps(loop_detection_config, indent=4, cls=SerializableEnumEncoder))
-        
+
     # Select your depth estimator in the front-end (EXPERIMENTAL, WIP)
     depth_estimator = None
     if Parameters.kUseDepthEstimatorInFrontEnd:
@@ -142,20 +209,21 @@ if __name__ == "__main__":
         depth_estimator_type = DepthEstimatorType.DEPTH_PRO
         max_depth = 20
         depth_estimator = depth_estimator_factory(depth_estimator_type=depth_estimator_type, max_depth=max_depth,
-                                                  dataset_env_type=dataset.environmentType(), camera=camera) 
-        Printer.green(f'Depth_estimator_type: {depth_estimator_type.name}, max_depth: {max_depth}')       
+                                                  dataset_env_type=dataset.environmentType(), camera=camera)
+        Printer.green(f'Depth_estimator_type: {depth_estimator_type.name}, max_depth: {max_depth}')
 
     # create SLAM object
-    slam = Slam(camera, feature_tracker_config, 
-                loop_detection_config, dataset.sensorType(), 
-                environment_type=dataset.environmentType(), 
+
+    slam = Slam(camera, feature_tracker_config,
+                loop_detection_config, dataset.sensorType(),
+                environment_type=dataset.environmentType(),
                 config=config,
                 headless=args.headless)
     slam.set_viewer_scale(dataset.scale_viewer_3d)
-    time.sleep(1) # to show initial messages 
-    
-    # load system state if requested         
-    if config.system_state_load: 
+    time.sleep(1) # to show initial messages
+
+    # load system state if requested
+    if config.system_state_load:
         slam.load_system_state(config.system_state_folder_path)
         viewer_scale = slam.viewer_scale() if slam.viewer_scale()>0 else 0.1  # 0.1 is the default viewer scale
         print(f'viewer_scale: {viewer_scale}')
@@ -163,76 +231,76 @@ if __name__ == "__main__":
 
     if args.headless:
         viewer3D = None
-        plot_drawer = None        
+        plot_drawer = None
     else:
-        viewer3D = Viewer3D(scale=dataset.scale_viewer_3d) 
+        viewer3D = Viewer3D(scale=dataset.scale_viewer_3d)
         plot_drawer = SlamPlotDrawer(slam, viewer3D)
         img_writer = ImgWriter(font_scale=0.7)
         if False:
-            cv2.namedWindow('Camera', cv2.WINDOW_NORMAL) # to make it resizable if needed        
-    
+            cv2.namedWindow('Camera', cv2.WINDOW_NORMAL) # to make it resizable if needed
+
     if groundtruth:
         gt_traj3d, gt_poses, gt_timestamps = groundtruth.getFull6dTrajectory()
         if viewer3D:
             viewer3D.set_gt_trajectory(gt_traj3d, gt_timestamps, align_with_scale=is_monocular)
-            
-    do_step = False          # proceed step by step on GUI 
-    do_reset = False         # reset on GUI 
-    is_paused = False        # pause/resume on GUI 
+
+    do_step = False          # proceed step by step on GUI
+    do_reset = False         # reset on GUI
+    is_paused = False        # pause/resume on GUI
     is_map_save = False      # save map on GUI
     is_bundle_adjust = False # bundle adjust on GUI
     is_viewer_closed = False # viewer GUI was closed
-    
+
     key = None
     key_cv = None
-    
+
     num_tracking_lost = 0
     num_frames = 0
-            
-    img_id = 0  #210, 340, 400, 770   # you can start from a desired frame id if needed 
+
+    img_id = 0  #210, 340, 400, 770   # you can start from a desired frame id if needed
     while not is_viewer_closed:
-        
-        img, img_right, depth = None, None, None    
-        
+
+        img, img_right, depth = None, None, None
+
         if do_step:
             Printer.orange('do step: ', do_step)
-            
-        if do_reset: 
+
+        if do_reset:
             Printer.yellow('do reset: ', do_reset)
             slam.reset()
-               
+
         if not is_paused or do_step:
-        
+
             if dataset.isOk():
-                print('..................................')               
+                print('..................................')
                 img = dataset.getImageColor(img_id)
                 depth = dataset.getDepth(img_id)
                 img_right = dataset.getImageColorRight(img_id) if dataset.sensor_type == SensorType.STEREO else None
-            
+
             if img is not None:
-                timestamp = dataset.getTimestamp()          # get current timestamp 
-                next_timestamp = dataset.getNextTimestamp() # get next timestamp 
+                timestamp = dataset.getTimestamp()          # get current timestamp
+                next_timestamp = dataset.getNextTimestamp() # get next timestamp
                 frame_duration = next_timestamp-timestamp if (timestamp is not None and next_timestamp is not None) else -1
 
-                print(f'image: {img_id}, timestamp: {timestamp}, duration: {frame_duration}') 
-                
-                time_start = None 
+                print(f'image: {img_id}, timestamp: {timestamp}, duration: {frame_duration}')
+
+                time_start = None
                 if img is not None:
-                    time_start = time.time()    
-                    
+                    time_start = time.time()
+
                     if depth is None and depth_estimator:
                         depth_prediction, pts3d_prediction = depth_estimator.infer(img, img_right)
                         if Parameters.kDepthEstimatorRemoveShadowPointsInFrontEnd:
                             depth = filter_shadow_points(depth_prediction)
-                        else: 
+                        else:
                             depth = depth_prediction
-                        
+
                         if not args.headless:
                             depth_img = img_from_depth(depth_prediction, img_min=0, img_max=50)
                             cv2.imshow("depth prediction", depth_img)
-                                  
-                    slam.track(img, img_right, depth, img_id, timestamp)  # main SLAM function 
-                                    
+
+                    slam.track(img, img_right, depth, img_id, timestamp)  # main SLAM function
+
                     # 3D display (map display)
                     if viewer3D:
                         viewer3D.draw_slam_map(slam)
@@ -242,112 +310,112 @@ if __name__ == "__main__":
                         img_writer.write(img_draw, f'id: {img_id}', (30, 30))
                         # 2D display (image display)
                         cv2.imshow('Camera', img_draw)
-                    
+
                     # draw 2d plots
                     if plot_drawer:
                         plot_drawer.draw(img_id)
-                        
+
                 if online_trajectory_writer is not None and slam.tracking.cur_R is not None and slam.tracking.cur_t is not None:
                     online_trajectory_writer.write_trajectory(slam.tracking.cur_R, slam.tracking.cur_t, timestamp)
 
-                    
-                if time_start is not None: 
+
+                if time_start is not None:
                     duration = time.time()-time_start
                     if(frame_duration > duration):
-                        time.sleep(frame_duration-duration) 
-                    
-                img_id += 1 
+                        time.sleep(frame_duration-duration)
+
+                img_id += 1
                 num_frames += 1
-            else: 
+            else:
                 time.sleep(0.1)     # img is None
                 if args.headless:
                     break # exit from the loop if headless
-                
+
             # 3D display (map display)
             if viewer3D:
-                viewer3D.draw_dense_map(slam)  
-                              
+                viewer3D.draw_dense_map(slam)
+
         else:
-            time.sleep(0.1)     # pause or do step on GUI                           
-        
+            time.sleep(0.1)     # pause or do step on GUI
+
         if not args.headless:
-            # get keys 
+            # get keys
             key = plot_drawer.get_key() if plot_drawer else None
-            key_cv = cv2.waitKey(1) & 0xFF   
-            
-            # manage SLAM states 
+            key_cv = cv2.waitKey(1) & 0xFF
+
+            # manage SLAM states
             if slam.tracking.state==SlamState.LOST:
                 #key_cv = cv2.waitKey(0) & 0xFF   # wait key for debugging
-                key_cv = cv2.waitKey(500) & 0xFF   
-                
+                key_cv = cv2.waitKey(500) & 0xFF
+
         if slam.tracking.state==SlamState.LOST:
-            num_tracking_lost += 1                              
-                
-        # manage interface infos  
+            num_tracking_lost += 1
+
+        # manage interface infos
         if is_map_save:
             slam.save_system_state(config.system_state_folder_path)
             dataset.save_info(config.system_state_folder_path)
             groundtruth.save(config.system_state_folder_path)
-            Printer.blue('\nuncheck pause checkbox on GUI to continue...\n')    
-            
-        if is_bundle_adjust:
-            slam.bundle_adjust()    
             Printer.blue('\nuncheck pause checkbox on GUI to continue...\n')
-                            
+
+        if is_bundle_adjust:
+            slam.bundle_adjust()
+            Printer.blue('\nuncheck pause checkbox on GUI to continue...\n')
+
         if viewer3D:
-            
+
             if not is_paused and viewer3D.is_paused():  # when a pause is triggered
                 est_poses, timestamps, ids = slam.get_final_trajectory()
                 assoc_timestamps, assoc_est_poses, assoc_gt_poses = find_poses_associations(timestamps, est_poses, gt_timestamps, gt_poses)
-                ape_stats, T_gt_est = eval_ate(poses_est=assoc_est_poses, poses_gt=assoc_gt_poses, frame_ids=ids, 
+                ape_stats, T_gt_est = eval_ate(poses_est=assoc_est_poses, poses_gt=assoc_gt_poses, frame_ids=ids,
                         curr_frame_id=img_id, is_final=False, is_monocular=is_monocular, save_dir=None)
                 Printer.green(f"EVO stats: {json.dumps(ape_stats, indent=4)}")
                 #draw_associated_cameras(viewer3D, assoc_est_poses, assoc_gt_poses, T_gt_est)
-                        
-            is_paused = viewer3D.is_paused()    
-            is_map_save = viewer3D.is_map_save() and is_map_save == False 
+
+            is_paused = viewer3D.is_paused()
+            is_map_save = viewer3D.is_map_save() and is_map_save == False
             is_bundle_adjust = viewer3D.is_bundle_adjust() and is_bundle_adjust == False
-            do_step = viewer3D.do_step() and do_step == False  
+            do_step = viewer3D.do_step() and do_step == False
             do_reset = viewer3D.reset() and do_reset == False
             is_viewer_closed = viewer3D.is_closed()
-                               
+
         if key == 'q' or (key_cv == ord('q') or key_cv == 27):    # press 'q' or ESC for quitting
             break
-            
+
     # here we save the online estimated trajectory
     online_trajectory_writer.close_file()
-    
-    # compute metrics on the estimated final trajectory 
-    try: 
+
+    # compute metrics on the estimated final trajectory
+    try:
         est_poses, timestamps, ids = slam.get_final_trajectory()
         is_final = not dataset.isOk()
-        assoc_timestamps, assoc_est_poses, assoc_gt_poses = find_poses_associations(timestamps, est_poses, gt_timestamps, gt_poses)        
-        ape_stats, T_gt_est = eval_ate(poses_est=assoc_est_poses, poses_gt=assoc_gt_poses, frame_ids=ids, 
+        assoc_timestamps, assoc_est_poses, assoc_gt_poses = find_poses_associations(timestamps, est_poses, gt_timestamps, gt_poses)
+        ape_stats, T_gt_est = eval_ate(poses_est=assoc_est_poses, poses_gt=assoc_gt_poses, frame_ids=ids,
                  curr_frame_id=img_id, is_final=is_final, is_monocular=is_monocular, save_dir=metrics_save_dir)
         Printer.green(f"EVO stats: {json.dumps(ape_stats, indent=4)}")
-        
+
         if final_trajectory_writer:
             final_trajectory_writer.write_full_trajectory(est_poses, timestamps)
             final_trajectory_writer.close_file()
-            
+
         other_metrics_file_path = os.path.join(metrics_save_dir, 'other_metrics_info.txt')
         with open(other_metrics_file_path, 'w') as f:
             f.write(f'num_total_frames: {num_total_frames}\n')
             f.write(f'num_processed_frames: {num_frames}\n')
             f.write(f'num_lost_frames: {num_tracking_lost}\n')
             f.write(f'percent_lost: {num_tracking_lost/num_total_frames*100:.2f}\n')
-        
+
     except Exception as e:
         print('Exception while computing metrics: ', e)
         print(f'traceback: {traceback.format_exc()}')
 
-    # close stuff 
+    # close stuff
     slam.quit()
     if plot_drawer:
-        plot_drawer.quit()         
+        plot_drawer.quit()
     if viewer3D:
-        viewer3D.quit()   
-    
+        viewer3D.quit()
+
     if not args.headless:
         cv2.destroyAllWindows()
 

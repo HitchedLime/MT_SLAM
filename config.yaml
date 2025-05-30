@@ -145,16 +145,16 @@ VIDEO_DATASET:
 #  settings: settings/KITTI00-02.yaml
 #  name: video.mp4
 
-  base_path: data/videos/UrbanZurichUav
-  settings: settings/ZurichMAV.yaml
-  name: fly_forest_2.mp4
+  base_path: data/videos/Flight 1
+  settings: settings/Flight1.yaml
+  name: Flight_VID_1_part_full.mov
 
 #  base_path: ./data/videos/webcam
 #  settings: settings/WEBCAM.yaml
 #  name: video.mp4
   #
-  groundtruth_file: groundtruth.txt
-  timestamps: times.txt # to be intended as the frame timestamps
+#  groundtruth_file: auto
+#  timestamps: times.txt # to be intended as the frame timestamps
 
 
 FOLDER_DATASET:
@@ -177,7 +177,7 @@ SYSTEM_STATE:
 
 SAVE_TRAJECTORY:
   save_trajectory: True
-  format_type: kitti             # supported formats: `tum`, `kitti`, `euroc`
+  format_type: tum             # supported formats: `tum`, `kitti`, `euroc`
   output_folder: results/metrics # relative to pyslam root folder 
   basename: trajectory           # basename of the trajectory saving output
 

@@ -293,4 +293,4 @@ img_matched = draw_feature_matches(img1, img2, kps1_matched, kps2_matched, kps1_
 fig1 = MPlotFigure(img_matched, title='All matches')
 if img_matched_inliers is not None: 
     fig2qq = MPlotFigure(img_matched_inliers, title='Inlier matches')   
-MPlotFigure.show()
+# MPlotFigure.show()
