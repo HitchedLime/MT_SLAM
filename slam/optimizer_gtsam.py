@@ -28,6 +28,7 @@ import multiprocessing as mp
 import traceback
 
 import gtsam
+
 import gtsam_factors
 from gtsam.symbol_shorthand import X, L
 import numpy as np

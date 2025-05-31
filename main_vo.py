@@ -33,7 +33,7 @@ from camera  import PinholeCamera
 from ground_truth import groundtruth_factory
 from dataset_factory import dataset_factory
 from dataset_types import DatasetType, SensorType
-
+import argparse
 from mplot_thread import Mplot2d, Mplot3d
 from qplot_thread import Qplot2d
 
@@ -44,13 +44,62 @@ from utils_sys import Printer
 from rerun_interface import Rerun
 
 
+
+feature_tracker_names = {
+
+    1: FeatureTrackerConfigs.LK_SHI_TOMASI,  # not in slam
+    2: FeatureTrackerConfigs.LK_FAST, # not in slam
+    3: FeatureTrackerConfigs.SHI_TOMASI_ORB, # very bad shoudl leave out
+    4: FeatureTrackerConfigs.SHI_TOMASI_FREAK, # very bad should be skipped
+    5: FeatureTrackerConfigs.FAST_ORB,
+    6: FeatureTrackerConfigs.FAST_FREAK,
+    7: FeatureTrackerConfigs.BRISK,
+    8: FeatureTrackerConfigs.BRISK_TFEAT,
+    9: FeatureTrackerConfigs.ORB,
+    10: FeatureTrackerConfigs.ORB2,
+    11: FeatureTrackerConfigs.KAZE,
+    12: FeatureTrackerConfigs.AKAZE,
+    13: FeatureTrackerConfigs.SIFT,
+    14: FeatureTrackerConfigs.ROOT_SIFT,
+    15: FeatureTrackerConfigs.SURF,
+    16: FeatureTrackerConfigs.SUPERPOINT,
+    17: FeatureTrackerConfigs.XFEAT,
+    18: FeatureTrackerConfigs.XFEAT_XFEAT,
+    19: FeatureTrackerConfigs.XFEAT_LIGHTGLUE,
+    20: FeatureTrackerConfigs.LIGHTGLUE,
+    21: FeatureTrackerConfigs.LIGHTGLUE_DISK,
+    22: FeatureTrackerConfigs.LIGHTGLUE_ALIKED,
+    23: FeatureTrackerConfigs.LIGHTGLUESIFT,
+    24: FeatureTrackerConfigs.DELF,
+    25: FeatureTrackerConfigs.D2NET,
+    26: FeatureTrackerConfigs.R2D2,
+    27: FeatureTrackerConfigs.LFNET,
+    28: FeatureTrackerConfigs.CONTEXTDESC,
+    29: FeatureTrackerConfigs.KEYNET,
+    30: FeatureTrackerConfigs.DISK,
+    31: FeatureTrackerConfigs.ALIKED,
+    32: FeatureTrackerConfigs.KEYNETAFFNETHARDNET,
+    33: FeatureTrackerConfigs.ORB2_FREAK,
+    34: FeatureTrackerConfigs.ORB2_BEBLID,
+    35: FeatureTrackerConfigs.ORB2_HARDNET,
+    36: FeatureTrackerConfigs.ORB2_SOSNET,
+    37: FeatureTrackerConfigs.ORB2_L2NET,
+    38: FeatureTrackerConfigs.LOFTR,
+    39: FeatureTrackerConfigs.MAST3R_MATCHER
+}
+
+
+
+
+
+
 kScriptPath = os.path.realpath(__file__)
 kScriptFolder = os.path.dirname(kScriptPath)
 kRootFolder = kScriptFolder
 kResultsFolder = kRootFolder + '/results'
 
 
-kUseRerun = True
+kUseRerun = False
 # check rerun does not have issues 
 if kUseRerun and not Rerun.is_ok():
     kUseRerun = False
@@ -58,7 +107,7 @@ if kUseRerun and not Rerun.is_ok():
 """
 use or not pangolin (if you want to use it then you need to install it by using the script install_thirdparty.sh)
 """
-kUsePangolin = True  
+kUsePangolin = False
 if platform.system() == 'Darwin':
     kUsePangolin = True # Under mac force pangolin to be used since Mplot3d() has some reliability issues                
 if kUsePangolin:
@@ -79,6 +128,23 @@ def factory_plot2d(*args,**kwargs):
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser()
+    # parser.add_argument('-c', '--config_path', type=str, default=None,
+    #                     help='Optional path for custom configuration file')
+    # parser.add_argument('--no_output_date', action='store_true', help='Do not append date to output directory')
+    # parser.add_argument('--headless', action='store_true', help='Run in headless mode')
+    parser.add_argument('--tracker_config', type=int, help='Specify the tracker configuration as a number')
+    parser.add_argument('--save_path', type=str, help='trajectory_save_path')
+    args = parser.parse_args()
+    path_res = "results_VO"
+    if not os.path.exists(path_res):
+        os.makedirs(path_res)
+
+    trajectory_file_save_path=  os.path.join(path_res,args.save_path)
+
+
+
+
     config = Config()
     
     dataset = dataset_factory(config)
@@ -94,7 +160,7 @@ if __name__ == "__main__":
     # select your tracker configuration (see the file feature_tracker_configs.py) 
     # LK_SHI_TOMASI, LK_FAST
     # SHI_TOMASI_ORB, FAST_ORB, ORB, BRISK, AKAZE, FAST_FREAK, SIFT, ROOT_SIFT, SURF, SUPERPOINT, LIGHTGLUE, XFEAT, XFEAT_XFEAT, LOFTR
-    tracker_config = FeatureTrackerConfigs.LK_SHI_TOMASI
+    tracker_config = feature_tracker_names[args.tracker_config]
     tracker_config['num_features'] = num_features
    
     feature_tracker = feature_tracker_factory(**tracker_config)
@@ -134,7 +200,7 @@ if __name__ == "__main__":
     is_draw_matched_points = True 
     matched_points_plt = factory_plot2d(xlabel='img id', ylabel='# matches',title='# matches')
 
-    
+
     img_id = 0
     while True:
         
@@ -243,5 +309,6 @@ if __name__ == "__main__":
         err_plt.quit()
     if is_draw_matched_points is not None:
         matched_points_plt.quit()
-                
+    np.save(f'{trajectory_file_save_path}.npy', vo.traj3d_est)
+
     cv2.destroyAllWindows()

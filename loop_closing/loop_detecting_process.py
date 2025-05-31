@@ -331,12 +331,16 @@ class LoopDetectingProcess:
         time_loop_detection.value = timer.last_elapsed
         LoopDetectorBase.print(f'LoopDetectingProcess: q_in size: {q_in.qsize()}, q_out size: {q_out.qsize()}, q_out_reloc size: {q_out_reloc.qsize()}, loop-detection-process elapsed time: {time_loop_detection.value}')
 
-
-    def add_task(self, task: LoopDetectorTask): 
+    def add_task(self, task: LoopDetectorTask):
         if self.is_running.value == 1:
-            with self.q_in_condition:
-                self.q_in.put(task)
-                self.q_in_condition.notify_all()
+            for _ in range(3):  # Retry mechanism
+                try:
+                    with self.q_in_condition:
+                        self.q_in.put(task, timeout=1.0)
+                        self.q_in_condition.notify_all()
+                    break
+                except (ConnectionRefusedError, BrokenPipeError):
+                    self.restart_manager_connection()
 
     def pop_output(self, q_out=None, q_out_condition=None, timeout=Parameters.kLoopDetectingTimeoutPopKeyframe):
         # Normally, we use self.q_out and self.q_out_condition.
