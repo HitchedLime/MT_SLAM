@@ -17,6 +17,7 @@
 * You should have received a copy of the GNU General Public License
 * along with PYSLAM. If not, see <http://www.gnu.org/licenses/>.
 """
+import sys
 
 import numpy as np
 import cv2
@@ -43,8 +44,7 @@ from feature_tracker_configs import FeatureTrackerConfigs
 from utils_sys import Printer
 from rerun_interface import Rerun
 
-
-
+from test_config import feature_tracker_names_str
 feature_tracker_names = {
 
     1: FeatureTrackerConfigs.LK_SHI_TOMASI,  # not in slam
@@ -134,13 +134,15 @@ if __name__ == "__main__":
     # parser.add_argument('--no_output_date', action='store_true', help='Do not append date to output directory')
     # parser.add_argument('--headless', action='store_true', help='Run in headless mode')
     parser.add_argument('--tracker_config', type=int, help='Specify the tracker configuration as a number')
-    parser.add_argument('--save_path', type=str, help='trajectory_save_path')
+    # parser.add_argument('--save_path', type=str, help='trajectory_save_path')
+
+    parser.add_argument('--headless',action='store_true', help='no visualization ')
     args = parser.parse_args()
     path_res = "results_VO"
     if not os.path.exists(path_res):
         os.makedirs(path_res)
 
-    trajectory_file_save_path=  os.path.join(path_res,args.save_path)
+    trajectory_file_save_path=  os.path.join(path_res,feature_tracker_names_str[args.tracker_config])
 
 
 
@@ -183,8 +185,9 @@ if __name__ == "__main__":
     plt3d = None
     
     viewer3D = None 
-    
+
     is_draw_3d = True
+
     is_draw_with_rerun = kUseRerun
     if is_draw_with_rerun:
         Rerun.init_vo()
@@ -199,7 +202,11 @@ if __name__ == "__main__":
     
     is_draw_matched_points = True 
     matched_points_plt = factory_plot2d(xlabel='img id', ylabel='# matches',title='# matches')
-
+    # if (arsg.headless):
+    #     is_draw_3d = False
+    #     is_draw_traj_img = False
+    #     is_draw_err = False
+    #     is_draw_matched_points =False
 
     img_id = 0
     while True:
@@ -291,6 +298,9 @@ if __name__ == "__main__":
         if viewer3D and viewer3D.is_closed():
             break
         img_id += 1
+        if(img is None):
+            break
+
 
     #print('press a key in order to exit...')
     #cv2.waitKey(0)
@@ -310,5 +320,6 @@ if __name__ == "__main__":
     if is_draw_matched_points is not None:
         matched_points_plt.quit()
     np.save(f'{trajectory_file_save_path}.npy', vo.traj3d_est)
-
+    sys.exit()
     cv2.destroyAllWindows()
+

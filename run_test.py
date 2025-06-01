@@ -7,8 +7,8 @@ import glob
 
 
 arg1 = "--tracker_config"
-
-for i in range(21,40):
+mode = "VO"
+for i in range(0,40):
     print(f'#######RUNNING TEST  {feature_tracker_names_str[i]} {i}  ###########################')
     if mode =="SLAM":
         subprocess.run(['python3', 'main_slam.py', arg1, str(i),"--headless"])
@@ -22,5 +22,5 @@ for i in range(21,40):
                     print(f'Removed log file: {log_file}')
                 except Exception as e:
                    print(f'Error removing file {log_file}: {e}')
-    else:
+    if mode == "VO":
         subprocess.run(['python3', 'main_vo.py', arg1, str(i)])
