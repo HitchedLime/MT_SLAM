@@ -147,7 +147,7 @@ VIDEO_DATASET:
 
   base_path: data/videos/Flight 1
   settings: settings/Flight1.yaml
-  name: Flight_VID_1_part_full.mov
+  name: Flight_VID_1_part1.mp4
 
 #  base_path: ./data/videos/webcam
 #  settings: settings/WEBCAM.yaml

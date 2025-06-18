@@ -124,7 +124,9 @@ def factory_plot2d(*args,**kwargs):
         return Qplot2d(*args,**kwargs)
     else:
         return Mplot2d(*args,**kwargs)
-    
+
+
+from feature_types import FeatureDetectorTypes, FeatureDescriptorTypes
 
 if __name__ == "__main__":
 
@@ -135,8 +137,13 @@ if __name__ == "__main__":
     # parser.add_argument('--headless', action='store_true', help='Run in headless mode')
     parser.add_argument('--tracker_config', type=int, help='Specify the tracker configuration as a number')
     # parser.add_argument('--save_path', type=str, help='trajectory_save_path')
+    parser.add_argument('--sigma_level0',type=int,help= "Default one is 1 or 0")
 
     parser.add_argument('--headless',action='store_true', help='no visualization ')
+    parser.add_argument('--num_levels',type = int)
+    parser.add_argument('--match_ratio_test', type=float)
+    parser.add_argument('--scale_factor',type =float)
+
     args = parser.parse_args()
     path_res = "results_VO"
     if not os.path.exists(path_res):
@@ -163,8 +170,15 @@ if __name__ == "__main__":
     # LK_SHI_TOMASI, LK_FAST
     # SHI_TOMASI_ORB, FAST_ORB, ORB, BRISK, AKAZE, FAST_FREAK, SIFT, ROOT_SIFT, SURF, SUPERPOINT, LIGHTGLUE, XFEAT, XFEAT_XFEAT, LOFTR
     tracker_config = feature_tracker_names[args.tracker_config]
+
     tracker_config['num_features'] = num_features
-   
+    tracker_config["sigma_level0"]= args.sigma_level0
+    if  "num_levels"  in tracker_config.keys():
+        tracker_config["num_levels"] =args.num_levels
+    if "scale_factor" in tracker_config.keys():
+        tracker_config["scale_factor"] = args.scale_factor
+    if "match_ratio_test" in tracker_config.keys():
+        tracker_config['match_ratio_test']= args.match_ratio_test
     feature_tracker = feature_tracker_factory(**tracker_config)
 
     # create visual odometry object 
